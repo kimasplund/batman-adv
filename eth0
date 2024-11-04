@@ -1,0 +1,3 @@
+auto eth0
+iface eth0 inet manual
+    mtu 1532 

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# Get configuration from snapctl
+WIFI_SSID=$(snapctl get wifi.ssid)
+WIFI_PASS=$(snapctl get wifi.password)
+MESH_SUBNET=$(snapctl get mesh.subnet)
+
+# Set defaults if not configured
+[ -z "$WIFI_SSID" ] && WIFI_SSID="mesh"
+[ -z "$WIFI_PASS" ] && WIFI_PASS="@meshnetwor1436"
+[ -z "$MESH_SUBNET" ] && MESH_SUBNET="192.168.100"
+
+# Update hostapd configuration
+sed -i "s/^ssid=.*/ssid=$WIFI_SSID/" $SNAP_DATA/etc/hostapd/hostapd.conf
+sed -i "s/^wpa_passphrase=.*/wpa_passphrase=$WIFI_PASS/" $SNAP_DATA/etc/hostapd/hostapd.conf
+
+# Update dnsmasq configuration
+sed -i "s/^dhcp-range=.*/dhcp-range=$MESH_SUBNET.2,$MESH_SUBNET.50,255.255.255.0,12h/" $SNAP_DATA/etc/dnsmasq.conf 

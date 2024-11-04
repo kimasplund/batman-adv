@@ -1,0 +1,133 @@
+name: batman-mesh-network
+base: core24
+version: '1.0.0'
+summary: Batman-adv mesh network solution for Raspberry Pi
+description: |
+  A complete mesh networking solution using batman-adv protocol.
+  Includes automatic configuration for 5GHz WiFi mesh networking,
+  with support for both WiFi and Ethernet interfaces.
+
+grade: stable
+confinement: strict
+type: app
+
+architectures:
+  - amd64
+  - arm64
+
+apps:
+  batman-service:
+    command: bin/start-batman-adv.sh
+    daemon: simple
+    restart-condition: always
+    start-timeout: 60s
+    stop-timeout: 60s
+    plugs:
+      - network
+      - network-bind
+      - network-control
+      - network-manager
+      - hardware-observe
+      - network-setup-observe
+      - network-setup-control
+      - firewall-control
+      - system-observe
+      - kernel-module-control
+      - process-control
+    slots:
+      - network-manager-slot
+
+  setup:
+    command: bin/setup-mesh-node.sh
+    plugs:
+      - network
+      - network-control
+      - hardware-observe
+      - system-observe
+      - kernel-module-control
+      - snapd-control
+      - firewall-control
+
+layout:
+  /etc/hostapd:
+    bind: $SNAP_DATA/etc/hostapd
+  /etc/dnsmasq.conf:
+    bind-file: $SNAP_DATA/etc/dnsmasq.conf
+  /etc/network/interfaces.d:
+    bind: $SNAP_DATA/etc/network/interfaces.d
+
+hooks:
+  install:
+    plugs: [network, snapd-control]
+  configure:
+    plugs: [network, snapd-control]
+  pre-refresh:
+    plugs: [network-control, firewall-control]
+  post-refresh:
+    plugs: [network-control, firewall-control]
+
+plugs:
+  network-manager-slot:
+    interface: network-manager
+
+parts:
+  batman-mesh:
+    plugin: dump
+    source: .
+    build-packages:
+      - batctl
+      - bridge-utils
+      - hostapd
+      - dnsmasq
+      - iptables
+      - wireless-tools
+      - iw
+    stage-packages:
+      - batctl
+      - bridge-utils
+      - hostapd
+      - dnsmasq
+      - iptables
+      - wireless-tools
+      - iw
+    organize:
+      scripts/*: bin/
+      config/*: etc/
+    prime:
+      - bin/
+      - etc/
+      - usr/
+      - lib/
+
+  microk8s:
+    plugin: nil
+    stage-snaps:
+      - microk8s
+
+  git-ubuntu:
+    plugin: nil
+    stage-snaps:
+      - git-ubuntu
+
+  network-manager:
+    plugin: nil
+    stage-snaps:
+      - network-manager
+
+environment:
+  SNAP_COMMON_OPTS: "--config $SNAP_DATA/etc/batman.conf"
+  PATH: "$SNAP/usr/sbin:$SNAP/usr/bin:$SNAP/sbin:$SNAP/bin:$PATH"
+  LD_LIBRARY_PATH: "$SNAP/usr/lib:$SNAP/lib:$LD_LIBRARY_PATH"
+
+assumes:
+  - snapd2.55
+  - kernel-module-control
+
+slots:
+  dbus-batman:
+    interface: dbus
+    bus: system
+    name: com.ubuntu.BatmanMesh
+
+system-usernames:
+  snap_daemon: shared
